@@ -2,7 +2,6 @@ package com.ayush.rate_limiter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -10,30 +9,31 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class RateLimitInterceptor implements HandlerInterceptor {
 
     private final RateLimiterService rateLimiterService;
+    private final KafkaAuditProducer kafkaAuditProducer;
 
-    // Constructor Injection
-    public RateLimitInterceptor(RateLimiterService rateLimiterService) {
+    public RateLimitInterceptor(RateLimiterService rateLimiterService, KafkaAuditProducer kafkaAuditProducer) {
         this.rateLimiterService = rateLimiterService;
+        this.kafkaAuditProducer = kafkaAuditProducer;
     }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-
-        // 1. Extract the API key from the HTTP headers
         String apiKey = request.getHeader("X-API-KEY");
 
-        // 2. Reject requests that don't have the header
-        if (apiKey == null || apiKey.trim().isEmpty()) {
-            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            response.getWriter().write("HTTP 401: Unauthorized. Missing X-API-KEY header!");
+        if (apiKey == null || apiKey.isEmpty()) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("API Key is missing");
             return false;
         }
 
-        // 3. Pass the dynamic API key to our service
-        boolean isAllowed = rateLimiterService.isAllowed(apiKey);
+        boolean allowed = rateLimiterService.isAllowed(apiKey);
 
-        if (!isAllowed) {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+        if (!allowed) {
+            // 🚨 Trigger Kafka Audit Event when rate-limited
+            kafkaAuditProducer.logBlockedRequest(apiKey, request.getRequestURI());
+
+            response.setStatus(429);
+            response.setContentType("application/json");
             response.getWriter().write("HTTP 429: Too Many Requests. Bucket is empty for key: " + apiKey);
             return false;
         }
