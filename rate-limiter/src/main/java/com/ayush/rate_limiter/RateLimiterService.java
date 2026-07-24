@@ -23,27 +23,36 @@ public class RateLimiterService {
         this.script.setResultType(Long.class);
     }
 
-    public boolean isAllowed(String clientId) {
-        // Define rate limiter configurations
-        long maxTokens = 5;       // Bucket capacity: 5 tokens max
-        long refillRate = 1;      // Refill rate: 1 token per second
+    public boolean isAllowed(String apiKey) {
+        long maxTokens;
+        long refillRate;
+
+        // Simulate a database check for API key tiers
+        if ("pro_token_999".equals(apiKey)) {
+            // Pro Tier: 50 requests capacity, refills 10 tokens per second
+            maxTokens = 50;
+            refillRate = 10;
+        } else {
+            // Free Tier (Default): 5 requests capacity, refills 1 token per second
+            maxTokens = 5;
+            refillRate = 1;
+        }
+
         long now = Instant.now().getEpochSecond();
         long requestedTokens = 1;
 
-        // Redis Key format: "rate_limit:user123"
-        String key = "rate_limit:" + clientId;
+        // Redis Key format: "rate_limit:pro_token_999"
+        String key = "rate_limit:" + apiKey;
 
-        // Execute atomic Lua script
         Long result = redisTemplate.execute(
                 script,
-                Collections.singletonList(key),  // KEYS[1]
-                String.valueOf(maxTokens),        // ARGV[1]
-                String.valueOf(refillRate),       // ARGV[2]
-                String.valueOf(now),              // ARGV[3]
-                String.valueOf(requestedTokens)   // ARGV[4]
+                Collections.singletonList(key),
+                String.valueOf(maxTokens),
+                String.valueOf(refillRate),
+                String.valueOf(now),
+                String.valueOf(requestedTokens)
         );
 
-        // Script returns 1 for allowed, 0 for rate-limited
-        return result != null && result == 1;
+        return Long.valueOf(1).equals(result);
     }
 }
