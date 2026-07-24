@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class KafkaAuditProducer {
 
+    // Spring Boot auto-configures a <String, String> template by default
     private final KafkaTemplate<String, String> kafkaTemplate;
     private static final String TOPIC = "rate-limit-alerts";
 
@@ -20,7 +21,7 @@ public class KafkaAuditProducer {
                 apiKey, path, System.currentTimeMillis()
         );
 
-        // Send the message to the Kafka topic, using the API key as the partition key
+        // Send the message to the Kafka topic
         kafkaTemplate.send(TOPIC, apiKey, payload);
 
         System.out.println("🚨 KAFKA EVENT PUBLISHED: " + payload);
