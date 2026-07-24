@@ -7,48 +7,44 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.Optional;
 
 @Service
 public class RateLimiterService {
 
     private final StringRedisTemplate redisTemplate;
     private final DefaultRedisScript<Long> script;
+    private final ApiKeyRepository apiKeyRepository;
 
-    public RateLimiterService(StringRedisTemplate redisTemplate) {
+    public RateLimiterService(StringRedisTemplate redisTemplate, ApiKeyRepository apiKeyRepository) {
         this.redisTemplate = redisTemplate;
+        this.apiKeyRepository = apiKeyRepository;
 
-        // Load the Lua script from src/main/resources/token_bucket.lua
         this.script = new DefaultRedisScript<>();
         this.script.setLocation(new ClassPathResource("token_bucket.lua"));
         this.script.setResultType(Long.class);
     }
 
     public boolean isAllowed(String apiKey) {
-        long maxTokens;
-        long refillRate;
+        // 1. Fetch the API key configuration directly from PostgreSQL
+        Optional<ApiKey> keyDataOpt = apiKeyRepository.findById(apiKey);
 
-        // Simulate a database check for API key tiers
-        if ("pro_token_999".equals(apiKey)) {
-            // Pro Tier: 50 requests capacity, refills 10 tokens per second
-            maxTokens = 50;
-            refillRate = 10;
-        } else {
-            // Free Tier (Default): 5 requests capacity, refills 1 token per second
-            maxTokens = 5;
-            refillRate = 1;
+        if (keyDataOpt.isEmpty()) {
+            return false; // Reject if API key does not exist in DB
         }
+
+        ApiKey keyData = keyDataOpt.get();
 
         long now = Instant.now().getEpochSecond();
         long requestedTokens = 1;
+        String redisKey = "rate_limit:" + apiKey;
 
-        // Redis Key format: "rate_limit:pro_token_999"
-        String key = "rate_limit:" + apiKey;
-
+        // 2. Execute Lua script using dynamic database tier settings
         Long result = redisTemplate.execute(
                 script,
-                Collections.singletonList(key),
-                String.valueOf(maxTokens),
-                String.valueOf(refillRate),
+                Collections.singletonList(redisKey),
+                String.valueOf(keyData.getMaxTokens()),
+                String.valueOf(keyData.getRefillRate()),
                 String.valueOf(now),
                 String.valueOf(requestedTokens)
         );
