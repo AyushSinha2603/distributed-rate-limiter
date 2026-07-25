@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.util.concurrent.CompletableFuture;
+
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
 
@@ -22,19 +24,21 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
         if (apiKey == null || apiKey.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("API Key is missing");
+            response.getWriter().write("API Key is missing\n");
             return false;
         }
 
         boolean allowed = rateLimiterService.isAllowed(apiKey);
 
         if (!allowed) {
-            // 🚨 Trigger Kafka Audit Event when rate-limited
-            kafkaAuditProducer.logBlockedRequest(apiKey, request.getRequestURI());
+            // 🚨 Fire and forget! Run Kafka in a background thread so it doesn't block the HTTP response
+            CompletableFuture.runAsync(() -> {
+                kafkaAuditProducer.logBlockedRequest(apiKey, request.getRequestURI());
+            });
 
             response.setStatus(429);
             response.setContentType("application/json");
-            response.getWriter().write("HTTP 429: Too Many Requests. Bucket is empty for key: " + apiKey);
+            response.getWriter().write("HTTP 429: Too Many Requests. Bucket is empty for key: " + apiKey + "\n");
             return false;
         }
 

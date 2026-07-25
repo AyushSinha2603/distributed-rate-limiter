@@ -1,7 +1,9 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: aegis_postgres
+    container_name: rate-limiter-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -10,7 +12,7 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - aegis_net
+      - rate-limiter_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -19,15 +21,15 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: aegis_redis
+    container_name: rate-limiter-redis
     ports:
       - "6379:6379"
     networks:
-      - aegis_net
+      - rate-limiter_net
 
   kafka:
     image: apache/kafka:latest
-    container_name: aegis_kafka
+    container_name: rate-limiter-kafka
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -37,39 +39,47 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      CLUSTER_ID: 'aegis-cluster-id-123'
+      CLUSTER_ID: 'rate-limiter-cluster-123'
     ports:
       - "9092:9092"
     networks:
-      - aegis_net
+      - rate-limiter_net
 
-  signoz:
-    image: ghcr.io/aetherall/signoz-standalone:latest
-    container_name: aegis_signoz
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rate-limiter-prometheus
     ports:
-      - "9999:8080"
-      - "4317:4317"
-    environment:
-      - SIGNOZ_ADMIN_EMAIL=admin@signoz.local
-      - SIGNOZ_ADMIN_PASSWORD=admin123
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
-      - aegis_net
+      - rate-limiter_net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rate-limiter-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - rate-limiter_net
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: aegis_backend
+    container_name: rate-limiter-backend
     ports:
       - "8080:8080"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/ratelimiter_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - OTEL_SERVICE_NAME=rate-limiter-service
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz:4317
-      - OTEL_METRICS_EXPORTER=otlp
-      - OTEL_LOGS_EXPORTER=otlp
+      - MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=prometheus,health,info
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,8 +88,8 @@ services:
       kafka:
         condition: service_started
     networks:
-      - aegis_net
+      - rate-limiter_net
 
 networks:
-  aegis_net:
+  rate-limiter_net:
     driver: bridge
