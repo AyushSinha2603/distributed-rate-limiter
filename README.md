@@ -29,6 +29,31 @@ flowchart LR
 - **Tiered Access:** PostgreSQL stores client API keys mapped to different rate limit tiers (e.g., Free, Pro, Enterprise).
 - **Out-of-the-box Monitoring:** Integrated Micrometer metrics provide deep visibility into system health and traffic patterns.
 
+## Rate Limiting Mechanism
+
+The application utilizes the **Token Bucket** algorithm, implemented via Redis atomic operations, to guarantee fast and safe evaluations even under heavy load across distributed nodes.
+
+- **Tokens:** Represent allowed requests.
+- **Bucket Capacity:** The maximum burst of requests a client can make.
+- **Refill Rate:** The constant rate at which tokens are replenished, dictating the sustained rate limit.
+
+By storing the buckets in Redis, the system avoids race conditions and ensures synchronization across any number of stateless Spring Boot API instances.
+
+## Project Structure
+
+```text
+├── src/main/java/.../ratelimiter/
+│   ├── config/      # Redis, Kafka, and System configurations
+│   ├── controller/  # API endpoints for traffic and admin ops
+│   ├── filter/      # Intercepts incoming requests for evaluation
+│   ├── model/       # Entities (ClientTier, ApiKey, AuditLog)
+│   ├── repository/  # Spring Data JPA repositories
+│   └── service/     # Token bucket logic, tier fetching, Kafka publishing
+├── docker-compose.yml   # Infrastructure orchestration
+├── Dockerfile           # Spring Boot containerization
+└── README.md
+```
+
 ## Tech Stack
 
 - **Application:** Java 17, Spring Boot 3
