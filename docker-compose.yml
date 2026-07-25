@@ -1,2 +1,85 @@
 services:
-  
+  postgres:
+    image: postgres:16-alpine
+    container_name: aegis_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ratelimiter_db
+      TZ: Asia/Kolkata
+    ports:
+      - "5432:5432"
+    networks:
+      - aegis_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: aegis_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - aegis_net
+
+  kafka:
+    image: apache/kafka:latest
+    container_name: aegis_kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      CLUSTER_ID: 'aegis-cluster-id-123'
+    ports:
+      - "9092:9092"
+    networks:
+      - aegis_net
+
+  signoz:
+    image: ghcr.io/aetherall/signoz-standalone:latest
+    container_name: aegis_signoz
+    ports:
+      - "9999:8080"
+      - "4317:4317"
+    environment:
+      - SIGNOZ_ADMIN_EMAIL=admin@signoz.local
+      - SIGNOZ_ADMIN_PASSWORD=admin123
+    networks:
+      - aegis_net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aegis_backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/ratelimiter_db
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - OTEL_SERVICE_NAME=rate-limiter-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz:4317
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+    networks:
+      - aegis_net
+
+networks:
+  aegis_net:
+    driver: bridge
