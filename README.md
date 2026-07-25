@@ -1,101 +1,122 @@
-# 🛡️ Distributed API Rate Limiter
+# Distributed API Rate Limiter
 
-![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=java&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
-![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-231F20?style=for-the-badge&logo=apache-kafka&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)
-![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)
-![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
+A robust, high-performance microservice designed to control API traffic and prevent abuse across distributed systems.
 
-A high-performance, containerized microservice engineered to manage API traffic, prevent abuse, and ensure high availability in distributed systems. Built with a focus on low-latency decision-making, asynchronous auditing, and real-time observability.
+Built with Java and Spring Boot, this service utilizes Redis for sub-millisecond evaluation of requests via the Token Bucket algorithm. It dynamically enforces tiered rate limits managed in PostgreSQL, while asynchronously streaming audit logs to Apache Kafka to ensure the critical request path remains unblocked. Full system telemetry is exposed to Prometheus and Grafana for real-time traffic observability.
 
-## ✨ Key Features
+---
 
-* **High-Throughput Rate Limiting:** Implements the Token Bucket algorithm via Redis to ensure sub-millisecond latency for traffic evaluation.
-* **Asynchronous Audit Logging:** Offloads blocked/allowed request auditing to Apache Kafka, decoupling analytics from the critical request path.
-* **Persistent Tier Management:** Uses PostgreSQL to manage dynamic client API keys and varying rate-limit tiers.
-* **Live Telemetry & Alerting:** Exposes custom Micrometer metrics scraped by Prometheus and visualized in real-time on a Grafana dashboard.
-* **Fully Containerized:** Entire stack is orchestrated via a single Docker Compose network for instant local deployment.
+## Architecture Overview
 
-## 🏗️ System Architecture
+The system is designed for high availability and low latency. The primary bottleneck in rate limiting is often the database or the logging mechanism. To solve this:
+1. **Traffic Evaluation:** Redis is used as a high-speed centralized state store for the Token Bucket algorithm, allowing multiple instances of the rate limiter to act in unison.
+2. **Audit Logging:** Instead of writing to a database on every request, results are published to an Apache Kafka topic. This decouples the analytics workload from the request handling workload.
 
 ```mermaid
-graph TD;
-    Client([Client / API User]) -->|HTTP Request| API[Spring Boot Backend]
-    API -->|Evaluate Token Bucket| Redis[(Redis Cache)]
-    API -->|Fetch API Key Tier| DB[(PostgreSQL)]
-    API -.->|Async Event: Allowed/Blocked| Kafka{Apache Kafka}
-    Prometheus((Prometheus)) -->|Scrape /actuator/prometheus| API
-    Grafana[[Grafana Dashboard]] -->|Query Time-Series Data| Prometheus
+flowchart LR
+    Client([API Client]) -->|Request| App[Spring Boot Service]
+    App <-->|Evaluate| Redis[(Redis)]
+    App -->|Fetch Tiers| PG[(PostgreSQL)]
+    App -.->|Async Audit| Kafka[[Kafka]]
+    Prometheus((Prometheus)) -->|Scrape| App
+    Grafana[[Grafana]] -->|Visualize| Prometheus
 ```
 
-## 🚀 Quick Start
+## Core Capabilities
+
+- **Sub-Millisecond Latency:** Redis-backed token bucket ensures minimal overhead on incoming API requests.
+- **Event-Driven Auditing:** Kafka integration allows for scalable, non-blocking storage of request history (allowed vs. blocked).
+- **Tiered Access:** PostgreSQL stores client API keys mapped to different rate limit tiers (e.g., Free, Pro, Enterprise).
+- **Out-of-the-box Monitoring:** Integrated Micrometer metrics provide deep visibility into system health and traffic patterns.
+
+## Tech Stack
+
+- **Application:** Java 17, Spring Boot 3
+- **Data & State:** Redis, PostgreSQL
+- **Event Streaming:** Apache Kafka
+- **Observability:** Prometheus, Grafana, Micrometer
+- **Deployment:** Docker, Docker Compose
+
+---
+
+## Quick Start Guide
 
 ### Prerequisites
-* [Docker](https://www.docker.com/products/docker-desktop) and Docker Compose installed.
-* Ports `8080`, `3000`, `9090`, `5432`, `6379`, and `9092` must be available on your host machine.
+- Docker and Docker Compose
+- Available ports: `8080` (API), `3000` (Grafana), `9090` (Prometheus), `5432` (Postgres), `6379` (Redis), `9092` (Kafka)
 
-### 1. Clone the Repository
+### 1. Setup
+
+Clone the project repository:
 ```bash
-git clone [https://github.com/AyushSinha2603/rate-limiter.git](https://github.com/AyushSinha2603/rate-limiter.git)
+git clone https://github.com/AyushSinha2603/rate-limiter.git
 cd rate-limiter
 ```
 
-### 2. Configure Environment
-Create a `.env` file in the root directory (or simply rely on the default fallbacks for local testing):
+Optional: Define custom credentials in a `.env` file at the root. Otherwise, default values will be used.
 ```env
-# Database Configuration
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=ratelimiter_db
-
-# Grafana Configuration
 GF_SECURITY_ADMIN_USER=admin
 GF_SECURITY_ADMIN_PASSWORD=admin
 ```
 
-### 3. Spin Up the Infrastructure
-Run the following command to build the Java application and boot up the entire distributed cluster:
+### 2. Launch
+
+Start the entire distributed cluster using Docker Compose:
 ```bash
 docker compose up -d --build
 ```
 
-## 📊 Observability & Monitoring
+---
 
-Once the cluster is running, the observability stack automatically begins tracking traffic and system health.
+## Usage Example
 
-* **Grafana Dashboard:** `http://localhost:3000` (Login: `admin` / `admin`)
-* **Prometheus Targets:** `http://localhost:9090/targets`
-* **Actuator Endpoint:** `http://localhost:8080/actuator/prometheus`
-
-**Key Metrics Tracked:**
-* `rate_limiter_requests_total`: Tracks overall throughput. Filter by the `result` label (`allowed` or `blocked`) to monitor traffic health and limit breaches in real-time.
-
-## 🔌 API Usage Examples
-
-**Test the Rate Limiter (Allowed Request):**
+**Successful Request (Allowed):**
 ```bash
 curl -X GET http://localhost:8080/api/resource \
      -H "X-API-KEY: free_token_123"
 ```
 
-**Test the Rate Limiter (Blocked Request - 429 Too Many Requests):**
-*Run this loop to exhaust the token bucket and trigger a block.*
+**Throttled Request (Blocked - 429 Too Many Requests):**
+Run this loop to exhaust the client's token bucket:
 ```bash
 for i in {1..20}; do curl -i http://localhost:8080/api/resource -H "X-API-KEY: free_token_123"; done
 ```
 
-## 🛠️ Development
+<p align="center">
+  <img src="assets/allowed-requests-table.png" alt="Audit Log Table" width="100%">
+</p>
+<p align="center"><em>Asynchronous audit logging capturing request outcomes.</em></p>
 
-To run the Spring Boot application locally outside of Docker (while keeping the database and message broker containerized):
+---
 
-1. Start only the infrastructure services:
+## Telemetry & Monitoring
+
+Live system metrics are available immediately upon startup.
+
+- **Grafana:** `http://localhost:3000` (Default credentials: `admin` / `admin`)
+- **Prometheus:** `http://localhost:9090/targets`
+
+The dashboard tracks the `rate_limiter_requests_total` metric, allowing you to filter by the `result` tag (`allowed` or `blocked`) to visualize traffic patterns and identify potential abuse in real-time.
+
+<p align="center">
+  <img src="assets/grafana-metrics-dashboard.png" alt="Grafana Metrics Dashboard" width="100%">
+</p>
+<p align="center"><em>Real-time traffic visibility through Grafana.</em></p>
+
+---
+
+## Local Development
+
+To develop the Spring Boot application locally while utilizing Docker for the backing infrastructure:
+
+1. Bring up only the supporting services:
    ```bash
    docker compose up -d postgres redis kafka prometheus grafana
    ```
-2. Run the Spring Boot application via your IDE or Maven:
+2. Start the application natively:
    ```bash
    ./mvnw spring-boot:run
    ```
