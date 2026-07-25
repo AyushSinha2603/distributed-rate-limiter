@@ -1,4 +1,4 @@
-# Distributed API Rate Limiter
+# 🛡️ Distributed API Rate Limiter
 
 A robust, high-performance microservice designed to control API traffic and prevent abuse across distributed systems.
 
@@ -6,7 +6,7 @@ Built with Java and Spring Boot, this service utilizes Redis for sub-millisecond
 
 ---
 
-## Architecture Overview
+## 🏗️ Architecture Overview
 
 The system is designed for high availability and low latency. The primary bottleneck in rate limiting is often the database or the logging mechanism. To solve this:
 1. **Traffic Evaluation:** Redis is used as a high-speed centralized state store for the Token Bucket algorithm, allowing multiple instances of the rate limiter to act in unison.
@@ -22,14 +22,14 @@ flowchart LR
     Grafana[[Grafana]] -->|Visualize| Prometheus
 ```
 
-## Core Capabilities
+## ✨ Core Capabilities
 
-- **Sub-Millisecond Latency:** Redis-backed token bucket ensures minimal overhead on incoming API requests.
-- **Event-Driven Auditing:** Kafka integration allows for scalable, non-blocking storage of request history (allowed vs. blocked).
-- **Tiered Access:** PostgreSQL stores client API keys mapped to different rate limit tiers (e.g., Free, Pro, Enterprise).
-- **Out-of-the-box Monitoring:** Integrated Micrometer metrics provide deep visibility into system health and traffic patterns.
+- **⚡ Sub-Millisecond Latency:** Redis-backed token bucket ensures minimal overhead on incoming API requests.
+- **🌊 Event-Driven Auditing:** Kafka integration allows for scalable, non-blocking storage of request history (allowed vs. blocked).
+- **🔐 Tiered Access:** PostgreSQL stores client API keys mapped to different rate limit tiers (e.g., Free, Pro, Enterprise).
+- **📊 Out-of-the-box Monitoring:** Integrated Micrometer metrics provide deep visibility into system health and traffic patterns.
 
-## Rate Limiting Mechanism
+## ⚙️ Rate Limiting Mechanism
 
 The application utilizes the **Token Bucket** algorithm, implemented via Redis atomic operations, to guarantee fast and safe evaluations even under heavy load across distributed nodes.
 
@@ -39,7 +39,7 @@ The application utilizes the **Token Bucket** algorithm, implemented via Redis a
 
 By storing the buckets in Redis, the system avoids race conditions and ensures synchronization across any number of stateless Spring Boot API instances.
 
-## Project Structure
+## 📂 Project Structure
 
 ```text
 ├── src/main/java/.../ratelimiter/
@@ -54,7 +54,7 @@ By storing the buckets in Redis, the system avoids race conditions and ensures s
 └── README.md
 ```
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 - **Application:** Java 17, Spring Boot 3
 - **Data & State:** Redis, PostgreSQL
@@ -64,7 +64,7 @@ By storing the buckets in Redis, the system avoids race conditions and ensures s
 
 ---
 
-## Quick Start Guide
+## 🚀 Quick Start Guide
 
 ### Prerequisites
 - Docker and Docker Compose
@@ -96,7 +96,7 @@ docker compose up -d --build
 
 ---
 
-## Usage Example
+## 💻 Usage Example
 
 **Successful Request (Allowed):**
 ```bash
@@ -117,7 +117,7 @@ for i in {1..20}; do curl -i http://localhost:8080/api/resource -H "X-API-KEY: f
 
 ---
 
-## Telemetry & Monitoring
+## 📈 Telemetry & Monitoring
 
 Live system metrics are available immediately upon startup.
 
@@ -133,7 +133,7 @@ The dashboard tracks the `rate_limiter_requests_total` metric, allowing you to f
 
 ---
 
-## Local Development
+## 🧑‍💻 Local Development
 
 To develop the Spring Boot application locally while utilizing Docker for the backing infrastructure:
 
