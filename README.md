@@ -4,6 +4,11 @@ A robust, high-performance microservice designed to control API traffic and prev
 
 Built with Java and Spring Boot, this service utilizes Redis for sub-millisecond evaluation of requests via the Token Bucket algorithm. It dynamically enforces tiered rate limits managed in PostgreSQL, while asynchronously streaming audit logs to Apache Kafka to ensure the critical request path remains unblocked. Full system telemetry is exposed to Prometheus and Grafana for real-time traffic observability.
 
+<p align="center">
+  <img src="assets/grafana-metrics-dashboard.png" alt="Grafana Metrics Dashboard" width="100%">
+</p>
+<p align="center"><em>Real-time traffic visibility and limit tracking through Grafana.</em></p>
+
 ---
 
 ## 🏗️ Architecture Overview
@@ -28,6 +33,11 @@ flowchart LR
 - **🌊 Event-Driven Auditing:** Kafka integration allows for scalable, non-blocking storage of request history (allowed vs. blocked).
 - **🔐 Tiered Access:** PostgreSQL stores client API keys mapped to different rate limit tiers (e.g., Free, Pro, Enterprise).
 - **📊 Out-of-the-box Monitoring:** Integrated Micrometer metrics provide deep visibility into system health and traffic patterns.
+
+<p align="center">
+  <img src="assets/allowed-requests-table.png" alt="Audit Log Table" width="100%">
+</p>
+<p align="center"><em>Asynchronous audit logging capturing request outcomes.</em></p>
 
 ## ⚙️ Rate Limiting Mechanism
 
@@ -110,11 +120,6 @@ Run this loop to exhaust the client's token bucket:
 for i in {1..20}; do curl -i http://localhost:8080/api/resource -H "X-API-KEY: free_token_123"; done
 ```
 
-<p align="center">
-  <img src="assets/allowed-requests-table.png" alt="Audit Log Table" width="100%">
-</p>
-<p align="center"><em>Asynchronous audit logging capturing request outcomes.</em></p>
-
 ---
 
 ## 📈 Telemetry & Monitoring
@@ -125,11 +130,6 @@ Live system metrics are available immediately upon startup.
 - **Prometheus:** `http://localhost:9090/targets`
 
 The dashboard tracks the `rate_limiter_requests_total` metric, allowing you to filter by the `result` tag (`allowed` or `blocked`) to visualize traffic patterns and identify potential abuse in real-time.
-
-<p align="center">
-  <img src="assets/grafana-metrics-dashboard.png" alt="Grafana Metrics Dashboard" width="100%">
-</p>
-<p align="center"><em>Real-time traffic visibility through Grafana.</em></p>
 
 ---
 
