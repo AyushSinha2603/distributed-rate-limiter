@@ -131,6 +131,11 @@ Live system metrics are available immediately upon startup.
 
 The dashboard tracks the `rate_limiter_requests_total` metric, allowing you to filter by the `result` tag (`allowed` or `blocked`) to visualize traffic patterns and identify potential abuse in real-time.
 
+<p align="center">
+  <img src="assets/grafana-dashboard-heatmap.png" alt="Grafana Dashboard Heatmap" width="100%">
+</p>
+<p align="center"><em>Latency and traffic density heatmap visualization in Grafana.</em></p>
+
 ---
 
 ## 🧑‍💻 Local Development
