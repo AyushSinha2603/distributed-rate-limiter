@@ -64,6 +64,15 @@ By storing the buckets in Redis, the system avoids race conditions and ensures s
 └── README.md
 ```
 
+## 🧠 Design Decisions
+
+| Component | Decision Rationale |
+| --- | --- |
+| **Token Bucket Algorithm** | Provides a smooth allowance of traffic and accommodates burstiness, unlike fixed-window counters which suffer from boundary spikes. |
+| **Redis State Store** | Atomic operations guarantee consistency in a distributed environment without locking, enabling sub-millisecond evaluations. |
+| **Kafka Event Streaming** | Decouples the critical request path from heavy database I/O. Audit logs can be replayed or consumed by downstream analytics without slowing down the gateway. |
+| **PostgreSQL Persistence** | Provides ACID guarantees for critical configuration data like API keys, client tiers, and tenant configurations. |
+
 ## 🛠️ Tech Stack
 
 - **Application:** Java 17, Spring Boot 3
@@ -150,3 +159,11 @@ To develop the Spring Boot application locally while utilizing Docker for the ba
    ```bash
    ./mvnw spring-boot:run
    ```
+
+---
+
+## 🔮 Future Enhancements
+
+- **Dynamic Policy Reloading:** Hot-reload rate limit tier configurations without restarting the Spring Boot instances.
+- **IP Reputation Scoring:** Integrate external threat feeds to automatically quarantine malicious IPs before they hit the token bucket.
+- **Admin Dashboard:** A dedicated control plane for managing API keys and observing real-time quarantine events.
