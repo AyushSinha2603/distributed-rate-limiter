@@ -11,6 +11,25 @@ Built with Java and Spring Boot, this service utilizes Redis for sub-millisecond
 
 ---
 
+<details>
+<summary><strong>📋 Table of Contents</strong></summary>
+
+- [🏗️ Architecture Overview](#️-architecture-overview)
+- [✨ Core Capabilities](#-core-capabilities)
+- [⚙️ Rate Limiting Mechanism](#️-rate-limiting-mechanism)
+- [📂 Project Structure](#-project-structure)
+- [🧠 Design Decisions](#-design-decisions)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [🚀 Quick Start Guide](#-quick-start-guide)
+- [💻 Usage Example](#-usage-example)
+- [📈 Telemetry & Monitoring](#-telemetry--monitoring)
+- [🧑‍💻 Local Development](#-local-development)
+- [🔮 Future Enhancements](#-future-enhancements)
+
+</details>
+
+---
+
 ## 🏗️ Architecture Overview
 
 The system is designed for high availability and low latency. The primary bottleneck in rate limiting is often the database or the logging mechanism. To solve this:
@@ -51,6 +70,9 @@ By storing the buckets in Redis, the system avoids race conditions and ensures s
 
 ## 📂 Project Structure
 
+<details>
+<summary><strong>Click to expand Project Tree</strong></summary>
+
 ```text
 ├── src/main/java/.../ratelimiter/
 │   ├── config/      # Redis, Kafka, and System configurations
@@ -63,6 +85,8 @@ By storing the buckets in Redis, the system avoids race conditions and ensures s
 ├── Dockerfile           # Spring Boot containerization
 └── README.md
 ```
+
+</details>
 
 ## 🧠 Design Decisions
 
@@ -98,6 +122,10 @@ cd rate-limiter
 ```
 
 Optional: Define custom credentials in a `.env` file at the root. Otherwise, default values will be used.
+
+<details>
+<summary><strong>View .env configuration</strong></summary>
+
 ```env
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
@@ -105,6 +133,8 @@ POSTGRES_DB=ratelimiter_db
 GF_SECURITY_ADMIN_USER=admin
 GF_SECURITY_ADMIN_PASSWORD=admin
 ```
+
+</details>
 
 ### 2. Launch
 
@@ -117,6 +147,9 @@ docker compose up -d --build
 
 ## 💻 Usage Example
 
+<details>
+<summary><strong>Click to view API curl examples</strong></summary>
+
 **Successful Request (Allowed):**
 ```bash
 curl -X GET http://localhost:8080/api/resource \
@@ -128,6 +161,8 @@ Run this loop to exhaust the client's token bucket:
 ```bash
 for i in {1..20}; do curl -i http://localhost:8080/api/resource -H "X-API-KEY: free_token_123"; done
 ```
+
+</details>
 
 ---
 
