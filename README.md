@@ -102,7 +102,7 @@ By storing the buckets in Redis, the system avoids race conditions and ensures s
 - **Application:** Java 17, Spring Boot 3
 - **Data & State:** Redis, PostgreSQL
 - **Event Streaming:** Apache Kafka
-- **Observability:** Prometheus, Grafana, Micrometer
+- **Observability:** Prometheus, Grafana
 - **Deployment:** Docker, Docker Compose
 
 ---
